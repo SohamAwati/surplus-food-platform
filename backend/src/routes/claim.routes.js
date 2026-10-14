@@ -31,6 +31,12 @@ router.get(
   listMyClaims
 );
 
+router.get(
+  "/my",
+  authorize("NGO", "VOLUNTEER"),
+  listMyClaims
+);
+
 /*
  * Current user's individual claim.
  */
