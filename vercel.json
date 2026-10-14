@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "services": {
+    "backend": {
+      "root": "backend",
+      "entrypoint": "index.js",
+      "buildCommand": "npm run build"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    }
+  ]
+}

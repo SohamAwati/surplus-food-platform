@@ -1,0 +1,452 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DONOR
+  NGO
+  VOLUNTEER
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum ListingStatus {
+  POSTED
+  CLAIMED
+  PICKED_UP
+  DELIVERED
+  CLOSED
+  EXPIRED
+}
+
+enum ClaimStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+  REJECTED
+}
+
+enum TransactionStatus {
+  ACTIVE
+  DELIVERED
+  CLOSED
+  DISPUTED
+  CANCELLED
+}
+
+enum SlaStatus {
+  NOT_STARTED
+  RUNNING
+  ON_TIME
+  OVERDUE
+  COMPLETED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum NotificationType {
+  LISTING
+  CLAIM
+  TRANSACTION
+  SLA
+  REWARD
+  DISPUTE
+  SYSTEM
+}
+
+enum RewardLedgerType {
+  EARN
+  REDEEM
+  ADJUST
+  EXPIRE
+}
+
+model User {
+  id                 String             @id @default(uuid()) @db.Uuid
+  email              String             @unique
+  passwordHash       String
+  role               Role
+  verificationStatus VerificationStatus @default(PENDING)
+  isActive           Boolean            @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  donorProfile     DonorProfile?
+  ngoProfile       NGOProfile?
+  volunteerProfile VolunteerProfile?
+
+  claims           Claim[]               @relation("Claimant")
+  transactions     Transaction[]         @relation("VolunteerTransactions")
+  proofs           ProofOfDistribution[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]            @relation("AuditActor")
+  openedDisputes   Dispute[]             @relation("DisputeOpenedBy")
+  resolvedDisputes Dispute[]             @relation("DisputeResolvedBy")
+  rewards          Reward[]
+  rewardLedger     RewardLedger[]
+  needZones        NeedZone[]            @relation("NeedZoneCreator")
+
+  @@index([role])
+  @@index([verificationStatus])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model DonorProfile {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+
+  organizationName String?
+  contactName      String
+  phone            String?
+  address          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outlets Outlet[]
+
+  @@map("donor_profiles")
+}
+
+model NGOProfile {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+
+  organizationName String
+  contactName      String
+  phone            String?
+  address          String?
+  beneficiaryCount Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  claims    Claim[]
+  needZones NeedZone[]
+
+  @@map("ngo_profiles")
+}
+
+model VolunteerProfile {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+
+  fullName     String
+  phone        String?
+  vehicleType  String?
+  availability Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("volunteer_profiles")
+}
+
+model Outlet {
+  id      String @id @default(uuid()) @db.Uuid
+  donorId String @db.Uuid
+
+  name    String
+  address String
+
+  // PostGIS geography(Point, 4326).
+  // Spatial indexes are added through the migration SQL.
+  location Unsupported("geography(Point, 4326)")?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  donor    DonorProfile @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  listings Listing[]
+
+  @@index([donorId])
+  @@index([isActive])
+  @@map("outlets")
+}
+
+model Listing {
+  id       String @id @default(uuid()) @db.Uuid
+  outletId String @db.Uuid
+
+  title       String
+  description String?
+  category    String?
+
+  quantity   Decimal?  @db.Decimal(12, 2)
+  unit       String?
+  preparedAt DateTime?
+  expiresAt  DateTime
+
+  status ListingStatus @default(POSTED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  outlet      Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  claims      Claim[]
+  transaction Transaction?
+
+  @@index([outletId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([status, expiresAt])
+  @@map("listings")
+}
+
+model Claim {
+  id         String @id @default(uuid()) @db.Uuid
+  listingId  String @db.Uuid
+  claimantId String @db.Uuid
+
+  status ClaimStatus @default(ACTIVE)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing      Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  claimant     User         @relation("Claimant", fields: [claimantId], references: [id])
+  transaction  Transaction?
+  ngoprofile   NGOProfile?  @relation(fields: [nGOProfileId], references: [id])
+  nGOProfileId String?      @db.Uuid
+
+  @@unique([listingId, claimantId])
+  @@index([listingId, status])
+  @@index([claimantId, status])
+  @@map("claims")
+}
+
+model Transaction {
+  id        String @id @default(uuid()) @db.Uuid
+  listingId String @unique @db.Uuid
+  claimId   String @unique @db.Uuid
+
+  volunteerId String? @db.Uuid
+
+  status    TransactionStatus @default(ACTIVE)
+  slaStatus SlaStatus         @default(NOT_STARTED)
+
+  pickupAt    DateTime?
+  slaDeadlineAt     DateTime?
+  slaWarningSentAt  DateTime?
+
+  deliveredAt DateTime?
+  closedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing   Listing @relation(fields: [listingId], references: [id])
+  claim     Claim   @relation(fields: [claimId], references: [id])
+  volunteer User?   @relation("VolunteerTransactions", fields: [volunteerId], references: [id])
+
+  proof    ProofOfDistribution?
+  disputes Dispute[]
+  rewards  Reward[]
+  ledger   RewardLedger[]
+
+  @@index([status])
+  @@index([slaStatus])
+  @@index([volunteerId])
+  @@map("transactions")
+  @@index([slaDeadlineAt])
+}
+
+model ProofOfDistribution {
+  id            String @id @default(uuid()) @db.Uuid
+  transactionId String @unique @db.Uuid
+  uploadedById  String @db.Uuid
+
+  imageUrl         String?
+  notes            String?
+  beneficiaryCount Int?
+
+  createdAt DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  uploadedBy  User        @relation(fields: [uploadedById], references: [id])
+
+  @@index([uploadedById])
+  @@map("proof_of_distribution")
+}
+
+model NeedZone {
+  id String @id @default(uuid()) @db.Uuid
+
+  ngoId       String? @db.Uuid
+  createdById String? @db.Uuid
+
+  name        String
+  description String?
+  priority    Int     @default(0)
+
+  // PostGIS geography(Point, 4326).
+  location Unsupported("geography(Point, 4326)")?
+
+  radiusMeters Int?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ngo       NGOProfile? @relation(fields: [ngoId], references: [id], onDelete: SetNull)
+  createdBy User?       @relation("NeedZoneCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([ngoId])
+  @@index([priority])
+  @@index([isActive])
+  @@map("need_zones")
+}
+
+model RewardRule {
+  id String @id @default(uuid()) @db.Uuid
+
+  name        String
+  description String?
+
+  points Int
+
+  actionType String
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([actionType])
+  @@index([isActive])
+  @@map("reward_rules")
+}
+
+model Reward {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId        String  @db.Uuid
+  transactionId String? @db.Uuid
+
+  points Int
+  reason String
+
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([userId])
+  @@index([transactionId])
+  @@map("rewards")
+}
+
+model RewardLedger {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId        String  @db.Uuid
+  transactionId String? @db.Uuid
+
+  type   RewardLedgerType
+  points Int
+  reason String
+
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([transactionId])
+  @@map("reward_ledger")
+}
+
+model Dispute {
+  id            String  @id @default(uuid()) @db.Uuid
+  transactionId String  @db.Uuid
+  openedById    String  @db.Uuid
+  resolvedById  String? @db.Uuid
+
+  reason      String
+  description String?
+
+  status DisputeStatus @default(OPEN)
+
+  resolution String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  openedBy    User        @relation("DisputeOpenedBy", fields: [openedById], references: [id])
+  resolvedBy  User?       @relation("DisputeResolvedBy", fields: [resolvedById], references: [id])
+
+  @@index([transactionId])
+  @@index([status])
+  @@index([openedById])
+  @@map("disputes")
+}
+
+model Notification {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+
+  type    NotificationType
+  title   String
+  message String
+
+  isRead Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  actorId String? @db.Uuid
+
+  action     String
+  entityType String
+  entityId   String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

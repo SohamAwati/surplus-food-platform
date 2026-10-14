@@ -1,0 +1,40 @@
+{
+  "name": "surplus-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "cd ../frontend && npm install && npm run build && cd ../backend && rm -rf public && cp -r ../frontend/dist public && npx prisma generate",
+    "dev": "nodemon src/server.js",
+    "redis:test": "node src/config/test-redis.js",
+    "queues:test": "node src/queues/test-queues.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.cjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^6.3.11",
+    "cloudinary": "^2.11.0",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "helmet": "latest",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
+    "prisma": "^6.19.0",
+    "socket.io": "^4.8.4",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "nodemon": "latest",
+    "prisma": "^6.19.0"
+  }
+}

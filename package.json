@@ -1,0 +1,25 @@
+{
+  "name": "surplus-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && rm -rf public && cp -r ../frontend/dist public && npx prisma generate",
+    "vercel-build": "cd frontend && npm install && npm run build && cd ../backend && npm install && rm -rf public && cp -r ../frontend/dist public && npx prisma generate",
+    "start": "cd backend && npm run start"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
+    "prisma": "^6.19.0",
+    "zod": "^3.24.2"
+  }
+}
