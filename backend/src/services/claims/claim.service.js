@@ -363,7 +363,11 @@ export async function getMyClaims(userId) {
         },
       },
 
-      transaction: true,
+      transaction: {
+        include: {
+          proof: true,
+        },
+      },
     },
 
     orderBy: {

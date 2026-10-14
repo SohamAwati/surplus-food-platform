@@ -23,6 +23,7 @@ import VolunteerMyClaims from "./pages/volunteer/MyClaims";
 
 import { MyTransactions as NgoMyTransactions } from "./pages/ngo/MyTransactions";
 import { MyTransactions as VolunteerMyTransactions } from "./pages/volunteer/MyTransactions";
+import { NeedyZonesPage } from "./pages/shared/NeedyZonesPage";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 
 import { useAuthStore } from "./store/auth.store";
@@ -123,6 +124,11 @@ function App() {
           path="/ngo/transactions"
           element={<NgoMyTransactions />}
         />
+
+        <Route
+          path="/ngo/needy-zones"
+          element={<NeedyZonesPage />}
+        />
       </Route>
 
       {/* VOLUNTEER PROTECTED AREA */}
@@ -140,6 +146,11 @@ function App() {
         <Route
           path="/volunteer/transactions"
           element={<VolunteerMyTransactions />}
+        />
+
+        <Route
+          path="/volunteer/needy-zones"
+          element={<NeedyZonesPage />}
         />
       </Route>
 

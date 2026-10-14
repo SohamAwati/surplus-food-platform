@@ -15,28 +15,65 @@ import {
 import { getMyClaims } from "../claim.api";
 import { useAuthStore } from "../../../store/auth.store";
 
-function StatusBadge({ status }) {
-  const styles = {
-    ACTIVE: "bg-amber-50 text-amber-700 border border-amber-200",
-    COMPLETED: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    CANCELLED: "bg-slate-100 text-slate-600 border border-slate-200",
-    REJECTED: "bg-red-50 text-red-700 border border-red-200",
-  };
+function getClaimDisplayState(claim) {
+  const tx = claim.transaction;
+  if (claim.status === "COMPLETED" || tx?.status === "CLOSED") {
+    return {
+      status: "COMPLETED",
+      label: "Completed & Verified",
+      color: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+      footerText: "Food rescued & verified",
+      buttonText: "View in Deliveries",
+      buttonClass: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+    };
+  }
 
-  return (
-    <span
-      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-        styles[status] || "bg-slate-100 text-slate-600"
-      }`}
-    >
-      {status?.replaceAll("_", " ") || "UNKNOWN"}
-    </span>
-  );
+  if (tx?.status === "DELIVERED") {
+    if (tx.proof) {
+      return {
+        status: "DELIVERED",
+        label: "Delivered (Proof Submitted)",
+        color: "bg-teal-50 text-teal-700 border border-teal-200",
+        footerText: "Delivered • Awaiting donor verification",
+        buttonText: "View Status",
+        buttonClass: "bg-teal-600 hover:bg-teal-700 text-white shadow-sm",
+      };
+    }
+    return {
+      status: "DELIVERED",
+      label: "Delivered (Proof Pending)",
+      color: "bg-blue-50 text-blue-700 border border-blue-200",
+      footerText: "Delivered • Handover proof required",
+      buttonText: "Submit Proof",
+      buttonClass: "bg-blue-600 hover:bg-blue-700 text-white shadow-sm",
+    };
+  }
+
+  if (tx?.pickupAt) {
+    return {
+      status: "IN_TRANSIT",
+      label: "In Transit",
+      color: "bg-purple-50 text-purple-700 border border-purple-200",
+      footerText: "Collected from outlet • On the way",
+      buttonText: "Confirm Delivery",
+      buttonClass: "bg-purple-600 hover:bg-purple-700 text-white shadow-sm",
+    };
+  }
+
+  return {
+    status: "ACTIVE",
+    label: "Ready for Pickup",
+    color: "bg-amber-50 text-amber-700 border border-amber-200",
+    footerText: "Ready for pickup & delivery",
+    buttonText: "Manage Delivery",
+    buttonClass: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
+  };
 }
 
 function ClaimCard({ claim, transactionsPath }) {
   const navigate = useNavigate();
   const listing = claim.listing;
+  const state = getClaimDisplayState(claim);
 
   const quantity =
     listing?.quantity !== null && listing?.quantity !== undefined
@@ -57,7 +94,11 @@ function ClaimCard({ claim, transactionsPath }) {
             </h3>
           </div>
 
-          <StatusBadge status={claim.status} />
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${state.color}`}
+          >
+            {state.label}
+          </span>
         </div>
       </div>
 
@@ -107,33 +148,19 @@ function ClaimCard({ claim, transactionsPath }) {
 
       {/* Action footer */}
       <div className="border-t border-slate-100 bg-slate-50/60 p-4">
-        {claim.status === "ACTIVE" ? (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-medium text-amber-800">
-              Ready for pickup & delivery
-            </span>
-            <button
-              onClick={() => navigate(transactionsPath)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-            >
-              <Truck size={14} />
-              Manage Delivery
-              <ArrowRight size={13} />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-slate-500">
-              Transaction finalized
-            </span>
-            <button
-              onClick={() => navigate(transactionsPath)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            >
-              View in Deliveries
-            </button>
-          </div>
-        )}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-medium text-slate-600">
+            {state.footerText}
+          </span>
+          <button
+            onClick={() => navigate(transactionsPath)}
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition ${state.buttonClass}`}
+          >
+            <Truck size={14} />
+            {state.buttonText}
+            <ArrowRight size={13} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -178,12 +205,26 @@ export default function MyClaimsView() {
     loadClaims();
   }, []);
 
+  const completedClaimsCount = useMemo(() => {
+    return claims.filter(
+      (c) => c.status === "COMPLETED" || c.transaction?.status === "CLOSED"
+    ).length;
+  }, [claims]);
+
+  const activeClaimsCount = claims.length - completedClaimsCount;
+
   const filteredClaims = useMemo(() => {
     if (filter === "ALL") return claims;
-    return claims.filter((c) => c.status === filter);
+    if (filter === "COMPLETED")
+      return claims.filter(
+        (c) => c.status === "COMPLETED" || c.transaction?.status === "CLOSED"
+      );
+    if (filter === "ACTIVE")
+      return claims.filter(
+        (c) => c.status !== "COMPLETED" && c.transaction?.status !== "CLOSED"
+      );
+    return claims;
   }, [claims, filter]);
-
-  const activeClaimsCount = claims.filter((c) => c.status === "ACTIVE").length;
 
   return (
     <div className="space-y-6">
@@ -233,17 +274,21 @@ export default function MyClaimsView() {
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-        {["ALL", "ACTIVE", "COMPLETED"].map((tab) => (
+        {[
+          { key: "ALL", label: `All Claims (${claims.length})` },
+          { key: "ACTIVE", label: `Active (${activeClaimsCount})` },
+          { key: "COMPLETED", label: `Completed (${completedClaimsCount})` },
+        ].map((tab) => (
           <button
-            key={tab}
-            onClick={() => setFilter(tab)}
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
             className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
-              filter === tab
+              filter === tab.key
                 ? "bg-slate-900 text-white shadow-sm"
                 : "bg-white text-slate-600 hover:bg-slate-100"
             }`}
           >
-            {tab === "ALL" ? `All Claims (${claims.length})` : `${tab} (${claims.filter(c => c.status === tab).length})`}
+            {tab.label}
           </button>
         ))}
       </div>

@@ -8,6 +8,7 @@ import {
   Image as ImageIcon,
   ShieldCheck,
   Users,
+  Compass,
 } from "lucide-react";
 
 import { Button } from "../ui/Button";
@@ -29,6 +30,7 @@ export function TransactionCard({
   onPickup,
   onDelivery,
   onSubmitProof,
+  onViewMap = null,
   actionLoading = false,
 }) {
   const listing = transaction?.listing;
@@ -112,11 +114,22 @@ export function TransactionCard({
       </div>
 
       {/* Location */}
-      <div className="border-t border-slate-100 px-6 py-4">
+      <div className="border-t border-slate-100 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-start gap-3 text-sm text-slate-600">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
           <span>{outlet?.address || "Pickup location unavailable"}</span>
         </div>
+
+        {onViewMap && (
+          <button
+            type="button"
+            onClick={() => onViewMap(transaction)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs"
+          >
+            <Compass size={14} className="text-emerald-600" />
+            View Nearest Needy Zones
+          </button>
+        )}
       </div>
 
       {/* Timeline */}
