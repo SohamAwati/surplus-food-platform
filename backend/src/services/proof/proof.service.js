@@ -32,8 +32,11 @@ export async function submitProof(userId, transactionId, { imageUrl, notes, bene
       throw serviceError("Transaction not found.", 404);
     }
 
-    if (transaction.claim.claimantId !== userId) {
-      throw serviceError("Only the claimant can submit proof.", 403);
+    const isClaimant = transaction.claim?.claimantId === userId;
+    const isAssignedVolunteer = transaction.volunteerId === userId;
+
+    if (!isClaimant && !isAssignedVolunteer) {
+      throw serviceError("Only the claimant or assigned volunteer can submit proof.", 403);
     }
 
     if (transaction.status !== "DELIVERED") {
@@ -51,6 +54,15 @@ export async function submitProof(userId, transactionId, { imageUrl, notes, bene
         imageUrl,
         notes,
         beneficiaryCount
+      },
+      include: {
+        uploadedBy: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+          }
+        }
       }
     });
 
@@ -80,9 +92,14 @@ export async function acknowledgeProof(userId, transactionId) {
       include: {
         listing: {
           include: {
-            outlet: true
+            outlet: {
+              include: {
+                donor: true
+              }
+            }
           }
         },
+        claim: true,
         proof: true
       }
     });
@@ -91,10 +108,13 @@ export async function acknowledgeProof(userId, transactionId) {
       throw serviceError("Transaction not found.", 404);
     }
 
-    if (transaction.listing.outlet.donorId !== userId && transaction.listing.outlet.donor?.userId !== userId) {
-      // Let's get the donor explicitly to check userId
+    const donor = transaction.listing?.outlet?.donor;
+    const isDonorUser = donor?.userId === userId;
+    const isDonorProfile = transaction.listing?.outlet?.donorId === userId;
+
+    if (!isDonorUser && !isDonorProfile) {
       const donorProfile = await tx.donorProfile.findUnique({
-        where: { id: transaction.listing.outlet.donorId }
+        where: { id: transaction.listing?.outlet?.donorId }
       });
       if (!donorProfile || donorProfile.userId !== userId) {
         throw serviceError("Only the donor can acknowledge proof.", 403);
@@ -117,7 +137,15 @@ export async function acknowledgeProof(userId, transactionId) {
       data: { status: "CLOSED" }
     });
 
-    // 2. Update transaction
+    // 2. Update claim if present
+    if (transaction.claimId) {
+      await tx.claim.update({
+        where: { id: transaction.claimId },
+        data: { status: "COMPLETED" }
+      });
+    }
+
+    // 3. Update transaction
     const updatedTransaction = await tx.transaction.update({
       where: { id: transactionId },
       data: {

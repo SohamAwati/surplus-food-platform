@@ -63,6 +63,18 @@ const transactionInclude = {
   },
 
   volunteer: true,
+
+  proof: {
+    include: {
+      uploadedBy: {
+        select: {
+          id: true,
+          email: true,
+          role: true,
+        },
+      },
+    },
+  },
 };
 
 /*

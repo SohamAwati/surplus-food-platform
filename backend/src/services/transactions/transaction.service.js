@@ -628,6 +628,7 @@ export async function deliverTransaction(
           },
 
           volunteer: true,
+          proof: true,
         },
       });
     },
