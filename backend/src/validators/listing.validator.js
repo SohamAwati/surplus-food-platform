@@ -27,23 +27,24 @@ export const createListingSchema = z
       .or(z.literal("")),
 
     quantity: z
-      .number()
-      .positive("Quantity must be greater than 0.")
-      .optional(),
+      .preprocess(
+        (val) => (val === "" || val === null ? undefined : typeof val === "string" ? Number(val) : val),
+        z.number().positive("Quantity must be greater than 0.").optional()
+      ),
 
     unit: z
       .string()
       .trim()
       .max(30, "Unit cannot exceed 30 characters.")
       .optional()
+      .nullable()
       .or(z.literal("")),
 
     preparedAt: z
-      .string()
-      .datetime({
-        offset: true,
-      })
-      .optional(),
+      .preprocess(
+        (val) => (val === "" || val === null ? undefined : val),
+        z.string().datetime({ offset: true }).optional()
+      ),
 
     expiresAt: z
       .string()
@@ -116,23 +117,24 @@ export const updateListingSchema = z
       .or(z.literal("")),
 
     quantity: z
-      .number()
-      .positive()
-      .optional(),
+      .preprocess(
+        (val) => (val === "" || val === null ? undefined : typeof val === "string" ? Number(val) : val),
+        z.number().positive().optional()
+      ),
 
     unit: z
       .string()
       .trim()
       .max(30)
       .optional()
+      .nullable()
       .or(z.literal("")),
 
     preparedAt: z
-      .string()
-      .datetime({
-        offset: true,
-      })
-      .optional(),
+      .preprocess(
+        (val) => (val === "" || val === null ? undefined : val),
+        z.string().datetime({ offset: true }).optional()
+      ),
 
     expiresAt: z
       .string()

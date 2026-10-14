@@ -185,19 +185,17 @@ export function EditListing() {
     try {
       const payload = {
         title: form.title.trim(),
-        description: form.description.trim(),
-        category: form.category,
+        description: form.description?.trim() || undefined,
+        category: form.category || undefined,
         quantity:
-          form.quantity === ""
-            ? undefined
-            : Number(form.quantity),
-        unit: form.unit,
+          form.quantity !== "" && !isNaN(Number(form.quantity))
+            ? Number(form.quantity)
+            : undefined,
+        unit: form.unit || undefined,
         preparedAt: form.preparedAt
           ? new Date(form.preparedAt).toISOString()
           : undefined,
-        expiresAt: new Date(
-          form.expiresAt
-        ).toISOString(),
+        expiresAt: new Date(form.expiresAt).toISOString(),
       };
 
       await updateListing(listingId, payload);

@@ -113,10 +113,14 @@ export async function createDonorListing(
    * The listing is already committed to PostgreSQL
    * before the BullMQ job is created.
    */
-  await scheduleListingExpiry(
-    listing.id,
-    listing.expiresAt
-  );
+  try {
+    await scheduleListingExpiry(
+      listing.id,
+      listing.expiresAt
+    );
+  } catch (queueErr) {
+    console.warn("[Listing Expiry Queue Notice]:", queueErr.message);
+  }
 
   broadcastToRole("NGO", "new_listing", {
     listingId: listing.id,
@@ -129,7 +133,7 @@ export async function createDonorListing(
 
 const DEMO_LISTINGS = [
   {
-    id: "lst_demo_001",
+    id: "00000000-0000-4000-8000-000000000011",
     title: "Fresh Baked Artisanal Sourdough & Baguettes",
     description: "Daily surplus from bakery counter. Kept at room temperature, baked this morning.",
     quantity: "25",
@@ -141,22 +145,22 @@ const DEMO_LISTINGS = [
     expiresAt: new Date(Date.now() + 86400000).toISOString(),
     storageInstructions: "Store in cool, dry place.",
     outlet: {
-      id: "out_demo_001",
+      id: "00000000-0000-4000-8000-000000000001",
       name: "Grand Central Kitchen - Main Branch",
       address: "Colaba Causeway, Mumbai, Maharashtra 400001",
       latitude: 18.922,
       longitude: 72.834,
       donor: {
-        id: "donor_prof_demo_001",
+        id: "00000000-0000-4000-8000-000000000003",
         organizationName: "Grand Central Kitchen",
         contactName: "Donor Admin",
         phone: "+91 98200 11223",
-        user: { id: "usr_donor_demo_001", email: "donor@surplus.local", verificationStatus: "VERIFIED" }
+        user: { id: "00000000-0000-4000-8000-000000000004", email: "donor@surplus.local", verificationStatus: "VERIFIED" }
       }
     }
   },
   {
-    id: "lst_demo_002",
+    id: "00000000-0000-4000-8000-000000000012",
     title: "Nutritious Mixed Vegetable Biryani & Raita",
     description: "Prepared for executive luncheon, untouched hot-insulated trays.",
     quantity: "60",
@@ -168,17 +172,17 @@ const DEMO_LISTINGS = [
     expiresAt: new Date(Date.now() + 14400000).toISOString(),
     storageInstructions: "Keep in thermal carriers until redistribution.",
     outlet: {
-      id: "out_demo_002",
+      id: "00000000-0000-4000-8000-000000000002",
       name: "Grand Central - Bandra Express Hub",
       address: "Linking Road, Bandra West, Mumbai, Maharashtra 400050",
       latitude: 19.06,
       longitude: 72.836,
       donor: {
-        id: "donor_prof_demo_001",
+        id: "00000000-0000-4000-8000-000000000003",
         organizationName: "Grand Central Kitchen",
         contactName: "Donor Admin",
         phone: "+91 98200 11223",
-        user: { id: "usr_donor_demo_001", email: "donor@surplus.local", verificationStatus: "VERIFIED" }
+        user: { id: "00000000-0000-4000-8000-000000000004", email: "donor@surplus.local", verificationStatus: "VERIFIED" }
       }
     }
   }

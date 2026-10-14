@@ -196,21 +196,17 @@ export function CreateListing() {
     const payload = {
       outletId: form.outletId,
       title: form.title.trim(),
-      description:
-        form.description.trim(),
-      category: form.category,
+      description: form.description?.trim() || undefined,
+      category: form.category || undefined,
       quantity:
-        form.quantity === ""
-          ? undefined
-          : Number(form.quantity),
-      unit: form.unit,
+        form.quantity !== "" && !isNaN(Number(form.quantity))
+          ? Number(form.quantity)
+          : undefined,
+      unit: form.unit || undefined,
       preparedAt: form.preparedAt
-        ? new Date(
-            form.preparedAt
-          ).toISOString()
+        ? new Date(form.preparedAt).toISOString()
         : undefined,
-      expiresAt:
-        expiryDate.toISOString(),
+      expiresAt: expiryDate.toISOString(),
     };
 
     setIsSaving(true);

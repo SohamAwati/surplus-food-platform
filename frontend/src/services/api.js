@@ -34,10 +34,13 @@ async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    const error = new Error(
-      data?.message || "Something went wrong"
-    );
+    const errorMsg =
+      data?.errors?.map((e) => (e.field ? `${e.field}: ${e.message}` : e.message)).join(", ") ||
+      data?.error?.message ||
+      data?.message ||
+      "Something went wrong";
 
+    const error = new Error(errorMsg);
     error.status = response.status;
     error.data = data;
 
@@ -56,6 +59,15 @@ export const api = {
     const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
     return request(path, {
       method: "POST",
+      body: isFormData ? body : JSON.stringify(body),
+      ...customOptions,
+    });
+  },
+
+  put(path, body, customOptions = {}) {
+    const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+    return request(path, {
+      method: "PUT",
       body: isFormData ? body : JSON.stringify(body),
       ...customOptions,
     });

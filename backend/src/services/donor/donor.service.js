@@ -12,8 +12,8 @@ import {
 } from "../../repositories/outlet.repository.js";
 
 const DEMO_DONOR_PROFILE = {
-  id: "donor_prof_demo_001",
-  userId: "usr_donor_demo_001",
+  id: "00000000-0000-4000-8000-000000000003",
+  userId: "00000000-0000-4000-8000-000000000004",
   organizationName: "Grand Central Kitchen",
   contactName: "Donor Admin",
   phone: "+91 98200 11223",
@@ -24,8 +24,8 @@ const DEMO_DONOR_PROFILE = {
 
 const DEMO_OUTLETS = [
   {
-    id: "out_demo_001",
-    donorId: "donor_prof_demo_001",
+    id: "00000000-0000-4000-8000-000000000001",
+    donorId: "00000000-0000-4000-8000-000000000003",
     name: "Grand Central Kitchen - Main Branch",
     address: "Colaba Causeway, Mumbai, Maharashtra 400001",
     isActive: true,
@@ -35,8 +35,8 @@ const DEMO_OUTLETS = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: "out_demo_002",
-    donorId: "donor_prof_demo_001",
+    id: "00000000-0000-4000-8000-000000000002",
+    donorId: "00000000-0000-4000-8000-000000000003",
     name: "Grand Central - Bandra Express Hub",
     address: "Linking Road, Bandra West, Mumbai, Maharashtra 400050",
     isActive: true,
@@ -65,7 +65,7 @@ export async function updateDonorProfileData(userId, data) {
   try {
     const donor = await findDonorProfileByUserId(userId);
     if (donor) {
-      return updateDonorProfile(userId, data);
+      return await updateDonorProfile(userId, data);
     }
   } catch (err) {
     console.warn("Database updateDonorProfile failed, using fallback:", err.message);
@@ -82,7 +82,7 @@ export async function listDonorOutlets(userId) {
   try {
     const donor = await findDonorProfileByUserId(userId);
     if (donor) {
-      return findOutletsByDonorId(donor.id);
+      return await findOutletsByDonorId(donor.id);
     }
   } catch (err) {
     console.warn("Database listDonorOutlets failed, using fallback:", err.message);
