@@ -14,3 +14,8 @@ export async function getNearbyListings(lat, lng, radiusMeters = 10000) {
   const response = await api.get(`/need-zones/nearby-listings?lat=${lat}&lng=${lng}&radius=${radiusMeters}`);
   return response.data || [];
 }
+
+export async function getActiveOutlets() {
+  const response = await api.get("/need-zones/outlets");
+  return response.data || [];
+}

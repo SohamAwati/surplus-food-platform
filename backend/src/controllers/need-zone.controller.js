@@ -1,4 +1,4 @@
-import { createNeedZone, getNeedZones, getNearbyListings } from "../services/need-zones/need-zone.service.js";
+import { createNeedZone, getNeedZones, getNearbyListings, getActiveOutlets } from "../services/need-zones/need-zone.service.js";
 
 export async function createNeedZoneController(req, res, next) {
   try {
@@ -40,6 +40,15 @@ export async function getNearbyListingsController(req, res, next) {
     const listings = await getNearbyListings(parseFloat(lat), parseFloat(lng), radiusMeters);
 
     res.json({ success: true, data: listings });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getActiveOutletsController(req, res, next) {
+  try {
+    const outlets = await getActiveOutlets();
+    res.json({ success: true, data: outlets });
   } catch (error) {
     next(error);
   }

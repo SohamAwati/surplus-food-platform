@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Building2,
+  Compass,
   Edit3,
   MapPin,
   Plus,
@@ -15,6 +16,8 @@ import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
+import { NeedyZonesMap } from "../../components/map/NeedyZonesMap";
+import { getNeedZones } from "../../features/need-zones/need-zone.api";
 
 import {
   createDonorOutlet,
@@ -32,8 +35,10 @@ const emptyForm = {
 
 export function DonorOutlets() {
   const [outlets, setOutlets] = useState([]);
+  const [needZones, setNeedZones] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const mapSectionRef = useRef(null);
 
   const [showModal, setShowModal] = useState(false);
   const [editingOutlet, setEditingOutlet] = useState(null);
@@ -47,9 +52,20 @@ export function DonorOutlets() {
     setError("");
 
     try {
-      const response = await getDonorOutlets();
+      const [outletsRes, zonesRes] = await Promise.allSettled([
+        getDonorOutlets(),
+        getNeedZones(),
+      ]);
 
-      setOutlets(response.data ?? []);
+      if (outletsRes.status === "fulfilled") {
+        setOutlets(outletsRes.value.data ?? []);
+      } else {
+        setError(outletsRes.reason?.message || "Unable to load your outlets.");
+      }
+
+      if (zonesRes.status === "fulfilled") {
+        setNeedZones(zonesRes.value || []);
+      }
     } catch (err) {
       console.error("Failed to load outlets:", err);
 
@@ -301,6 +317,16 @@ export function DonorOutlets() {
 
         </div>
 
+        {/* GEOSPATIAL MAP SECTION */}
+        <div ref={mapSectionRef} className="scroll-mt-6">
+          <NeedyZonesMap
+            outlets={outlets}
+            zones={needZones}
+            title="Your Outlets & Community Needy Zones Radar"
+            subtitle="Live geospatial proximity linking your donation branches with local high-need shelters and distribution zones"
+          />
+        </div>
+
         {/* OUTLETS */}
 
         <Card>
@@ -332,6 +358,10 @@ export function DonorOutlets() {
                   <OutletCard
                     key={outlet.id}
                     outlet={outlet}
+                    needZones={needZones}
+                    onFocusMap={() => {
+                      mapSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+                    }}
                     onEdit={openEditModal}
                     onDelete={handleDelete}
                   />
@@ -527,10 +557,46 @@ function SummaryCard({
 
 function OutletCard({
   outlet,
+  needZones = [],
+  onFocusMap,
   onEdit,
   onDelete,
 }) {
   const isActive = outlet.isActive !== false;
+
+  // Calculate closest needy zone
+  const oLat = outlet.latitude ?? outlet.lat;
+  const oLng = outlet.longitude ?? outlet.lng;
+  let nearestZone = null;
+
+  if (oLat != null && oLng != null && needZones.length > 0) {
+    let minDist = Infinity;
+    needZones.forEach((z) => {
+      const zLat = z.lat ?? z.latitude;
+      const zLng = z.lng ?? z.longitude;
+      if (zLat != null && zLng != null) {
+        const R = 6371;
+        const dLat = ((zLat - oLat) * Math.PI) / 180;
+        const dLon = ((zLng - oLng) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((oLat * Math.PI) / 180) *
+            Math.cos((zLat * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const d = 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        if (d < minDist) {
+          minDist = d;
+          nearestZone = {
+            name: z.name,
+            priority: z.priority,
+            distKm: d.toFixed(1),
+            transitMins: Math.max(2, Math.round((d / 22) * 60)),
+          };
+        }
+      }
+    });
+  }
 
   return (
     <div className="group rounded-2xl border border-slate-100 bg-white p-5 transition hover:border-emerald-200 hover:shadow-sm">
@@ -576,25 +642,51 @@ function OutletCard({
 
       </div>
 
-      {/* LOCATION */}
+      {/* LOCATION & NEAREST NEEDY ZONE LINKAGE */}
+      <div className="mt-4 space-y-2">
+        {(outlet.latitude !== undefined ||
+          outlet.longitude !== undefined) && (
+          <div className="rounded-xl bg-slate-50 px-3.5 py-2.5">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <MapPin size={13} className="text-slate-400" />
 
-      {(outlet.latitude !== undefined ||
-        outlet.longitude !== undefined) && (
-        <div className="mt-4 rounded-xl bg-slate-50 px-3.5 py-3">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <MapPin size={13} />
+              <span>
+                {outlet.latitude ?? "—"},{" "}
+                {outlet.longitude ?? "—"}
+              </span>
+            </div>
+          </div>
+        )}
 
-            <span>
-              {outlet.latitude ?? "—"},{" "}
-              {outlet.longitude ?? "—"}
+        {nearestZone && (
+          <div className="flex items-center justify-between rounded-xl bg-emerald-50/70 p-2.5 px-3 text-xs text-emerald-950 border border-emerald-100">
+            <div className="flex items-center gap-1.5 font-semibold truncate">
+              <Compass size={14} className="text-emerald-600 shrink-0" />
+              <span className="truncate">
+                Closest Need: {nearestZone.name} (P{nearestZone.priority})
+              </span>
+            </div>
+            <span className="shrink-0 font-bold text-emerald-700">
+              {nearestZone.distKm} km (~{nearestZone.transitMins}m)
             </span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ACTIONS */}
 
-      <div className="mt-4 flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-4">
+
+        {onFocusMap && (
+          <Button
+            variant="secondary"
+            onClick={onFocusMap}
+            className="text-xs"
+          >
+            <Compass size={14} />
+            Radar Map
+          </Button>
+        )}
 
         <Button
           variant="secondary"

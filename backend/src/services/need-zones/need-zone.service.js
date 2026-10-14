@@ -89,3 +89,19 @@ export async function getNearbyListings(lat, lng, radiusMeters = 10000) {
   `;
   return listings;
 }
+
+export async function getActiveOutlets() {
+  const outlets = await prisma.$queryRaw`
+    SELECT o.id, o.name, o.address, o."isActive",
+           ST_X(o.location::geometry) AS lng,
+           ST_Y(o.location::geometry) AS lat,
+           ST_X(o.location::geometry) AS longitude,
+           ST_Y(o.location::geometry) AS latitude,
+           dp."organizationName" AS "donorName"
+    FROM outlets o
+    LEFT JOIN donor_profiles dp ON o."donorId" = dp.id
+    WHERE o."isActive" = true
+    ORDER BY o.name ASC
+  `;
+  return outlets;
+}

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { DashboardLayout } from "../../layouts/DashboardLayout";
 import { NeedyZonesMap } from "../../components/map/NeedyZonesMap";
-import { getNeedZones, createNeedZone } from "../../features/need-zones/need-zone.api";
+import { getNeedZones, createNeedZone, getActiveOutlets } from "../../features/need-zones/need-zone.api";
 import { useAuthStore } from "../../store/auth.store";
 import { Button } from "../../components/ui/Button";
 
@@ -23,6 +23,7 @@ export function NeedyZonesPage() {
   const isNGO = user?.role === "NGO" || user?.role === "ADMIN";
 
   const [zones, setZones] = useState([]);
+  const [outlets, setOutlets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,21 +41,29 @@ export function NeedyZonesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState("");
 
-  const loadZones = async () => {
+  const loadData = async () => {
     setLoading(true);
     setError("");
     try {
-      const data = await getNeedZones();
-      setZones(data || []);
+      const [zonesData, outletsData] = await Promise.allSettled([
+        getNeedZones(),
+        getActiveOutlets(),
+      ]);
+      if (zonesData.status === "fulfilled") {
+        setZones(zonesData.value || []);
+      }
+      if (outletsData.status === "fulfilled") {
+        setOutlets(outletsData.value || []);
+      }
     } catch (err) {
-      setError(err?.message || "Failed to load needy zones.");
+      setError(err?.message || "Failed to load needy zones and outlets.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadZones();
+    loadData();
   }, []);
 
   const handleCreateZone = async (e) => {
@@ -85,7 +94,7 @@ export function NeedyZonesPage() {
         lat: 18.6305,
         lng: 73.813,
       });
-      await loadZones();
+      await loadData();
     } catch (err) {
       setError(err?.message || "Failed to register needy zone.");
     } finally {
@@ -127,7 +136,7 @@ export function NeedyZonesPage() {
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
-              onClick={loadZones}
+              onClick={loadData}
               loading={loading}
               className="bg-white"
             >
@@ -163,7 +172,12 @@ export function NeedyZonesPage() {
         )}
 
         {/* Geospatial Map */}
-        <NeedyZonesMap zones={filteredZones} />
+        <NeedyZonesMap
+          zones={filteredZones}
+          outlets={outlets}
+          title="Needy Zones & Nearest Outlets Radar"
+          subtitle="Identify community need clusters paired with closest donor food outlets for SLA compliance"
+        />
 
         {/* Add Zone Modal */}
         {showAddModal && (
