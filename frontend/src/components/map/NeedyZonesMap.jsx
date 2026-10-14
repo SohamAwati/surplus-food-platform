@@ -148,12 +148,12 @@ export function NeedyZonesMap({
       scrollWheelZoom: true,
     });
 
-    // CartoDB Positron clean map tiles
+    // Free OpenStreetMap tiles (no API key required)
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
         attribution:
-          '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OSM</a>',
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
       }
     ).addTo(map);
@@ -526,11 +526,11 @@ export function NeedyZonesMap({
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-900 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
                       >
-                        <Navigation size={13} />
-                        Navigate in Google Maps
-                        <ExternalLink size={12} />
+                        <Navigation size={14} className="text-white shrink-0" />
+                        <span className="text-white">Navigate in Google Maps</span>
+                        <ExternalLink size={12} className="text-white/80 shrink-0" />
                       </a>
                     </div>
                   )}
